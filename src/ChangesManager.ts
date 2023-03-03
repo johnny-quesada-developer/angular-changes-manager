@@ -40,12 +40,13 @@ import { debounce, getChangesSummary } from './ChangesManager.utils';
  * @example
  * // More Advanced configuration allows you to execute specific properties or groups of properties changes
  * // component.ts
- * import { ChangeDetectorRef, Inject, OnChanges } from '@angular/core';
+ * import { ChangeDetectorRef, Inject, OnChanges, Input } from '@angular/core';
  * import { ChangesManager } from 'ng-changes-manager';
  *
  * export class MyComponent implements OnChanges {
  *  changesManager: ChangesManager<MyComponent>;
  *
+ *  @Input()
  *  prop1: string;
  *
  *  constructor(@Inject(changeDetectorRef) changeDetectorRef: ChangeDetectorRef) {
@@ -70,17 +71,19 @@ import { debounce, getChangesSummary } from './ChangesManager.utils';
  *  * @example
  * // Example with groups of properties
  * // component.ts
- * import { ChangeDetectorRef, Inject, OnChanges } from '@angular/core';
+ * import { ChangeDetectorRef, Inject, OnChanges, Input } from '@angular/core';
  * import { ChangesManager } from 'ng-changes-manager';
  *
  * export class MyComponent implements OnChanges {
  *  changesManager: ChangesManager<MyComponent>;
  *
+ *  @Input()
  *  name: string;
  *
+ *  @Input()
  *  surname: string;
  *
- *  fullName: string;
+ *  public fullName: string;
  *
  *  constructor(@Inject(changeDetectorRef) changeDetectorRef: ChangeDetectorRef) {
  *    this.changesManager = new ChangesManager({
