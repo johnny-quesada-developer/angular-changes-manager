@@ -14,6 +14,10 @@ Angular lifecycle hooks provides the **OnChanges** lifecycle method which is cal
 
 ## This package provides a solution to the problems above
 
+# Important:
+
+The more powerful feature of this library is the ability to execute callbacks when a set of attributes change, so if you are just interested on that feature please scroll directly to the section **Implementing onChange callbacks with groups**, otherwise let's start with the basics.
+
 ...
 
 # How to use
