@@ -10,10 +10,10 @@
     "@jridgewell/gen-mapping" "^0.1.0"
     "@jridgewell/trace-mapping" "^0.3.9"
 
-"@angular/core@^15.2.1":
-  version "15.2.1"
-  resolved "https://registry.npmjs.org/@angular/core/-/core-15.2.1.tgz"
-  integrity sha512-CtN/cYDTGlELRcKBHxqnxmUhI9Euz2R+25dvjNtxB2tLzCehI6Fbmsb3NsC++jcAjL3QAmodpzzgULPtNJqs6A==
+"@angular/core@>=15.0.0":
+  version "15.2.2"
+  resolved "https://registry.yarnpkg.com/@angular/core/-/core-15.2.2.tgz#fb612038e09bc935e3a020966174a303015613d1"
+  integrity sha512-Rn9LKeeryV0hVrOxlOPnQJdgUxbKdB8NByhptzB6XSzZ0ODx0ZN+iYVRLqu0Fu95zh5oSeYYU+2yT6+FIIX65w==
   dependencies:
     tslib "^2.3.0"
 
