@@ -1,8 +1,8 @@
 {
   "name": "angular-changes-manager",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "This class helps to manage the changes of a component in a more efficient way",
-  "main": "lib/ComponentChangesManager.js",
+  "main": "lib/index.js",
   "files": [
     "lib"
   ],
