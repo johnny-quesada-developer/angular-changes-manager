@@ -2,7 +2,7 @@
   "compilerOptions": {
     "jsx": "react",
     "target": "ES2016",
-    "module": "commonjs",
+    "module": "esnext",
     "declaration": true,
     "outDir": "./lib",
     "strict": true,
