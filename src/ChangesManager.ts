@@ -111,13 +111,6 @@ export class ChangesManager<TComponent extends object> {
   private component: object;
 
   /**
-   * Delay in milliseconds to debounce the changes callbacks
-   * This is useful to avoid executing the callbacks multiple times when multiple changes are chained
-   * @default 0
-   */
-  private bedounceDelay: number;
-
-  /**
    * Configuration of the callbacks to be executed when the component receives changes
    */
   private callbacksConfig: TCallbacksConfig<TComponent> = null;
@@ -142,23 +135,24 @@ export class ChangesManager<TComponent extends object> {
    * Constructor of the changes manager
    * @param component - the component instance to which the changes manager is attached
    * @param changeDetectorRef - reference to the change detector of the component
-   * @param bedounceDelay - delay in milliseconds to debounce the changes callbacks, this is useful to avoid executing the callbacks multiple times when multiple changes are chained default 0
+   * @param debounceDelay - delay in milliseconds to debounce the detect changes debounced method
    * @param callbacks - configuration of the callbacks to be executed when the component receives changes
    */
   constructor({
     component,
     changeDetectorRef,
-    bedounceDelay = 0,
+    debounceDelay: debounceDelay = 0,
     callbacks: callbacksConfig,
   }: {
     component: TComponent;
     changeDetectorRef: ChangeDetectorRef;
     callbacks?: TCallbacksConfigParameter<TComponent>;
-    bedounceDelay?: number;
+    debounceDelay?: number;
   }) {
     this.component = component;
     this.changeDetectorRef = changeDetectorRef;
-    this.bedounceDelay = bedounceDelay;
+
+    this.detectChangesDebounced = debounce(this.detectChanges, debounceDelay);
 
     this.setCallbacksConfig(callbacksConfig);
   }
@@ -187,6 +181,8 @@ export class ChangesManager<TComponent extends object> {
   public detectChanges = () => {
     this.changeDetectorRef.detectChanges();
   };
+
+  public detectChangesDebounced: () => void;
 
   /**
    * The configuration parameter is not normalized, this method normalizes so both posible configurations styles are supported
@@ -275,7 +271,7 @@ export class ChangesManager<TComponent extends object> {
       const groupId = props.sort().join('|');
 
       // we use a debounced callback to avoid executing the callback multiple times when multiple changes are chained
-      const debouncedCallback = debounce(callback, this.bedounceDelay);
+      const debouncedCallback = debounce(callback, 0);
 
       const groupAttributesSet = new Set(props);
 
