@@ -329,7 +329,9 @@ export class ChangesManager<TComponent extends object> {
    * This method executes the callbacks which should be executed based on the changes detected in the component and the validators
    * If there are not validators it executes all the callbacks linked to the changed attributes
    */
-  executeChangesCallbacks = (changesSummary: TChangesSummary<TComponent>) => {
+  private executeChangesCallbacks = (
+    changesSummary: TChangesSummary<TComponent>
+  ) => {
     // we filter the groups to execute only the ones which have at least one attribute which changed
     const callbacks = this.getCallbacksWhichShouldBeExecuted(changesSummary);
 
