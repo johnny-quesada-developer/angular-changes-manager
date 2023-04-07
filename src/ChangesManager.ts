@@ -7,6 +7,7 @@ import {
   TCallbackConfig,
   TChangesSummary,
   TChangeCallback,
+  TChangeCallbackValidator,
 } from './ChangesManager.types';
 
 import { debounce, getChangesSummary } from './ChangesManager.utils';
@@ -131,35 +132,52 @@ export class ChangesManager<TComponent extends object> {
    */
   private changeDetectorRef: ChangeDetectorRef;
 
-  private shouldDebounceDetectChanges: boolean = false;
+  /**
+   *  (default: true) if true, the detect changes method will be called only if changes are detected, otherwise it will be called always
+   */
+  private strict: boolean = true;
+
+  private onChanges?: (changesSummary: TChangesSummary<TComponent>) => void;
 
   /**
    * Constructor of the changes manager
    * @param component - the component instance to which the changes manager is attached
    * @param changeDetectorRef - reference to the change detector of the component
-   * @param debounceDelay - delay in milliseconds to debounce the detect changes debounced method
+   * @param debounceDelay - debounce the execution of the manageChanges method to avoid multiple executions in a short period of time (default: 0)
    * @param callbacks - configuration of the callbacks to be executed when the component receives changes
+   * @param strict - (default: true) if true, the detect changes method will be called only if changes are detected, otherwise it will be called always
+   * @param onChangesCallbacks - callback to be executed after the changes are managed, if the strict mode is enabled, this callback will be executed only if changes are detected
    */
   constructor({
     component,
     changeDetectorRef,
     debounceDelay = 0,
     callbacks: callbacksConfig,
+    strict = true,
+    onChanges,
   }: {
     component: TComponent;
     changeDetectorRef: ChangeDetectorRef;
     callbacks?: TCallbacksConfigParameter<TComponent>;
     debounceDelay?: number | null;
+    strict?: boolean;
+    onChanges?: (changesSummary: TChangesSummary<TComponent>) => void;
   }) {
     this.component = component;
     this.changeDetectorRef = changeDetectorRef;
+    this.strict = strict;
+    this.onChanges = onChanges;
 
-    this.shouldDebounceDetectChanges = !isNaN(debounceDelay);
+    const shouldDebounceDetection = !isNaN(debounceDelay);
 
     this.detectChangesDebounced = debounce(
       this.detectChanges,
       debounceDelay ?? 0
     );
+
+    this.manageChanges = shouldDebounceDetection
+      ? debounce(this._manageChanges, debounceDelay)
+      : this._manageChanges;
 
     this.setCallbacksConfig(callbacksConfig);
   }
@@ -190,6 +208,17 @@ export class ChangesManager<TComponent extends object> {
   };
 
   public detectChangesDebounced: () => void;
+
+  /**
+   * This method should be called every time the component inputs change on the ngOnChanges lifecycle method
+   * @param simpleChanges the simple changes object
+   * @returns the changes summary
+   * the changes summary is an object where the keys are the input attributes and the values are the simple changes
+   * the simple changes are extended with a didChange property which indicates if the value changed or not
+   */
+  public manageChanges: (
+    simpleChanges: SimpleChanges
+  ) => TChangesSummary<TComponent>;
 
   /**
    * The configuration parameter is not normalized, this method normalizes so both posible configurations styles are supported
@@ -277,16 +306,13 @@ export class ChangesManager<TComponent extends object> {
       // groups cannot be duplicated, so we use the sorted props as the key
       const groupId = props.sort().join('|');
 
-      // we use a debounced callback to avoid executing the callback multiple times when multiple changes are chained
-      const debouncedCallback = debounce(callback, 0);
-
       const groupAttributesSet = new Set(props);
 
       propertiesByGroup.set(groupId, groupAttributesSet);
 
       // all callbacks are **debounced** so it doesn't matter if we call the same callback more than one
       callbacksByGroup.set(groupId, {
-        callback: debouncedCallback,
+        callback,
         validator: validator ?? null,
       });
     });
@@ -305,25 +331,39 @@ export class ChangesManager<TComponent extends object> {
    */
   private getCallbacksWhichShouldBeExecuted = (
     changesSummary: TChangesSummary<TComponent>
-  ): [string, TCallbackConfig<TComponent>][] => {
+  ) => {
     const properties = Object.keys(changesSummary);
     const callbacksGroups = Array.from(this.callbacksByGroup);
 
-    const callbacks = callbacksGroups.filter(([groupId, callbackConfig]) => {
-      const shouldIncludeGroup = properties.some((property) => {
-        const groupAttributes = this.propertiesByGroup.get(groupId);
+    const callbacks = callbacksGroups.reduce(
+      (accumulator, [groupId, { callback, validator }]) => {
+        const shouldIncludeGroup = properties.some((property) => {
+          const groupAttributes = this.propertiesByGroup.get(groupId);
 
-        const attributeHasChanges = changesSummary[property].didChange;
+          const attributeHasChanges = changesSummary[property].didChange;
 
-        const attributeBelongsToGroup = groupAttributes.has(
-          property as keyof TComponent
-        );
+          const attributeBelongsToGroup = groupAttributes.has(
+            property as keyof TComponent
+          );
 
-        return attributeHasChanges && attributeBelongsToGroup;
-      });
+          return attributeHasChanges && attributeBelongsToGroup;
+        });
 
-      return shouldIncludeGroup;
-    });
+        if (shouldIncludeGroup) {
+          const validators = accumulator.get(callback) ?? new Set();
+
+          if (validator) validators.add(validator);
+
+          accumulator.set(callback, validators);
+        }
+
+        return accumulator;
+      },
+      new Map<
+        TChangeCallback<TComponent>,
+        Set<TChangeCallbackValidator<TComponent>>
+      >()
+    );
 
     return callbacks;
   };
@@ -338,19 +378,17 @@ export class ChangesManager<TComponent extends object> {
     // we filter the groups to execute only the ones which have at least one attribute which changed
     const callbacks = this.getCallbacksWhichShouldBeExecuted(changesSummary);
 
-    callbacks.forEach(([, { callback, validator }]) => {
-      const shouldExecuteCallback = validator
-        ? !!validator(changesSummary)
-        : true;
+    Array.from(callbacks.entries()).forEach(([callback, validators]) => {
+      const shouldExecuteCallback = Array.from(validators).every((validator) =>
+        validator(changesSummary)
+      );
 
       if (!shouldExecuteCallback) return;
 
-      callback?.call(this.component, changesSummary);
+      callback.call(this.component, changesSummary);
     });
 
-    (this.shouldDebounceDetectChanges
-      ? this.detectChangesDebounced
-      : this.detectChanges)();
+    this.detectChanges();
   };
 
   /**
@@ -360,7 +398,7 @@ export class ChangesManager<TComponent extends object> {
    * the changes summary is an object where the keys are the input attributes and the values are the simple changes
    * the simple changes are extended with a didChange property which indicates if the value changed or not
    */
-  public manageChanges = (
+  private _manageChanges = (
     simpleChanges: SimpleChanges
   ): TChangesSummary<TComponent> => {
     const changesSummary = getChangesSummary<TComponent>(simpleChanges);
@@ -374,10 +412,72 @@ export class ChangesManager<TComponent extends object> {
     });
 
     // if no changes were detected we don't need to execute the callbacks
-    if (!shouldProcessChanges) return changesSummary;
+    if (this.strict && !shouldProcessChanges) return changesSummary;
 
     this.executeChangesCallbacks(changesSummary);
 
+    this.onChanges?.(changesSummary);
+
     return changesSummary;
+  };
+
+  /**
+   * Manually execute all the callbacks subscribed to the component, this execution is synchronous
+   */
+  public executeCallbacks = ({
+    avoidValidations = false,
+  }: {
+    avoidValidations?: boolean;
+  } = {}) => {
+    const callbacksGroups = Array.from(this.callbacksByGroup);
+
+    const { callbacks, attributes } = callbacksGroups.reduce(
+      (accumulator, [groupId, { callback, validator }]) => {
+        const attributes = groupId.split('|');
+
+        attributes.forEach((attribute) => {
+          accumulator.attributes.add(attribute);
+        });
+
+        const validations = accumulator.callbacks.get(callback) ?? new Set();
+        validations.add(validator);
+
+        accumulator.callbacks.set(callback, validations);
+
+        return accumulator;
+      },
+      {
+        callbacks: new Map<
+          TChangeCallback<TComponent>,
+          Set<TChangeCallbackValidator<TComponent>>
+        >(),
+        attributes: new Set<string>(),
+      }
+    );
+
+    const simpleChanges = Array.from(attributes).reduce(
+      (accumulator, attribute) => ({
+        ...accumulator,
+        [attribute]: {
+          currentValue: this.component[attribute],
+          previousValue: this.component[attribute],
+          firstChange: false,
+          isFirstChange: () => false,
+        },
+      }),
+      {}
+    );
+
+    const changesSummary = getChangesSummary<TComponent>(simpleChanges);
+
+    Array.from(callbacks.entries()).forEach(([callback, validators]) => {
+      const shouldExecuteCallback =
+        avoidValidations ||
+        Array.from(validators).every((validator) => validator(changesSummary));
+
+      if (!shouldExecuteCallback) return;
+
+      callback.call(this.component, changesSummary);
+    });
   };
 }
