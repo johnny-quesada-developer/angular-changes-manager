@@ -131,6 +131,8 @@ export class ChangesManager<TComponent extends object> {
    */
   private changeDetectorRef: ChangeDetectorRef;
 
+  private shouldDebounceDetectChanges: boolean = false;
+
   /**
    * Constructor of the changes manager
    * @param component - the component instance to which the changes manager is attached
@@ -141,18 +143,23 @@ export class ChangesManager<TComponent extends object> {
   constructor({
     component,
     changeDetectorRef,
-    debounceDelay: debounceDelay = 0,
+    debounceDelay = 0,
     callbacks: callbacksConfig,
   }: {
     component: TComponent;
     changeDetectorRef: ChangeDetectorRef;
     callbacks?: TCallbacksConfigParameter<TComponent>;
-    debounceDelay?: number;
+    debounceDelay?: number | null;
   }) {
     this.component = component;
     this.changeDetectorRef = changeDetectorRef;
 
-    this.detectChangesDebounced = debounce(this.detectChanges, debounceDelay);
+    this.shouldDebounceDetectChanges = !isNaN(debounceDelay);
+
+    this.detectChangesDebounced = debounce(
+      this.detectChanges,
+      debounceDelay ?? 0
+    );
 
     this.setCallbacksConfig(callbacksConfig);
   }
@@ -341,7 +348,9 @@ export class ChangesManager<TComponent extends object> {
       callback?.call(this.component, changesSummary);
     });
 
-    this.detectChanges();
+    (this.shouldDebounceDetectChanges
+      ? this.detectChangesDebounced
+      : this.detectChanges)();
   };
 
   /**
