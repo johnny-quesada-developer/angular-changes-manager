@@ -254,4 +254,39 @@ describe('ChangesManager', () => {
 
     return promise;
   });
+
+  it('should execute all the callbacks when calling executeCallbacks', () => {
+    const { promise, ...tools } = createDecoupledPromise();
+
+    const changeDetectorRef = createChangeDetectorRef();
+
+    const component = {
+      name: '',
+      surname: '',
+    };
+
+    const callback1 = jest.fn();
+    const callback2 = jest.fn();
+
+    const changesManager = createChangesManager({
+      component,
+      changeDetectorRef,
+      callbacks: {
+        name: callback1,
+        surname: callback2,
+      },
+    });
+
+    changesManager.executeCallbacks();
+
+    // the execution of the changes manager is debounced so we need to wait for the execution
+    setTimeout(() => {
+      expect(callback1).toHaveBeenCalledTimes(1);
+      expect(callback2).toHaveBeenCalledTimes(1);
+
+      tools.resolve();
+    }, 0);
+
+    return promise;
+  });
 });

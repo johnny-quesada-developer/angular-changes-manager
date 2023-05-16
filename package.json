@@ -1,9 +1,9 @@
 {
   "name": "angular-changes-manager",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "This class helps to manage the changes of a component in a more efficient way",
   "main": "lib/bundle.js",
-  "types": "lib/index.d.ts",
+  "types": "lib/src/index.d.ts",
   "files": [
     "lib"
   ],
@@ -44,6 +44,7 @@
     "@types/jest": "^29.2.4",
     "babel-loader": "^9.1.2",
     "cancelable-promise-jq": "^1.0.4",
+    "clean-webpack-plugin": "^4.0.0",
     "jest": "^26.6.3",
     "rxjs": "^7.8.0",
     "ts-jest": "^26.4.4",

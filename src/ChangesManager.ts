@@ -473,7 +473,9 @@ export class ChangesManager<TComponent extends object> {
     Array.from(callbacks.entries()).forEach(([callback, validators]) => {
       const shouldExecuteCallback =
         avoidValidations ||
-        Array.from(validators).every((validator) => validator(changesSummary));
+        Array.from(validators).every((validator) =>
+          validator ? validator(changesSummary) : true
+        );
 
       if (!shouldExecuteCallback) return;
 
